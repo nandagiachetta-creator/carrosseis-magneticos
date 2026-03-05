@@ -1,84 +1,87 @@
-// ============================================================
-// RECREATE EXPERT IMAGE — usa Imagen 4 via REST API
-// Substituiu: gemini-2.0-flash-preview-image-generation (quebrado)
-// ============================================================
+// api/recreate-expert-image.js
+// Gera/regenera a imagem de um slide usando Google Imagen 4
 const IMAGEN_MODEL = "imagen-4.0-generate-001";
-const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-
-function buildMagneticPrompt(basePrompt) {
-  const style = [
-    "professional photography",
-    "ultra-realistic",
+const VALID_ASPECT_RATIOS = ["1:1", "9:16", "16:9", "4:3", "3:4"];
+// Sistema de prompt magnético e realista
+function buildMagneticPrompt(basePrompt, slide = {}) {
+  const { title = "", subtitle = "" } = slide;
+  const styleModifiers = [
+    "ultra-realistic professional photography",
     "8K resolution",
     "cinematic lighting",
     "sharp focus",
     "high detail",
-    "magazine quality",
-    "editorial style",
-    "vibrant colors",
-    "clean composition",
+    "magazine editorial quality",
+    "vibrant and magnetic composition",
+    "no text overlay",
+    "no watermark",
   ].join(", ");
-  return `${basePrompt}, ${style}`;
-}
-
-async function generateSlideImage(slide, apiKey) {
-  const { titulo, subtitulo, nicho, paleta, indice, total } = slide;
-
-  let base = "";
-  if (titulo) base += titulo;
-  if (subtitulo) base += ` — ${subtitulo}`;
-
-  const prompt = buildMagneticPrompt(
-    `${base}. Background suitable for Instagram carousel slide ${indice || 1} of ${total || 1}.`
-  );
-
-  const url = `${BASE_URL}/${IMAGEN_MODEL}:predict?key=${apiKey}`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      instances: [{ prompt }],
-      parameters: { sampleCount: 1, aspectRatio: "1:1", personGeneration: "allow_adult" },
-    }),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Erro Imagen 4 [${response.status}]: ${errText}`);
+  let finalBase = basePrompt;
+  if (!finalBase && title) {
+    finalBase = `Professional background image representing: ${title}. ${subtitle ? subtitle : ""}`;
   }
-
-  const data = await response.json();
-  if (!data.predictions || data.predictions.length === 0) {
-    throw new Error("Nenhuma imagem retornada pela API Imagen 4.");
+  if (!finalBase) {
+    finalBase = "Clean professional background for social media carousel slide";
   }
-
-  const prediction = data.predictions[0];
-  return {
-    base64: prediction.bytesBase64Encoded,
-    mimeType: prediction.mimeType || "image/png",
-    dataUrl: `data:${prediction.mimeType || "image/png"};base64,${prediction.bytesBase64Encoded}`,
-  };
+  return `${finalBase}, ${styleModifiers}`;
 }
-
-module.exports = async (req, res) => {
+// Sanitizar e validar o aspectRatio
+function sanitizeAspectRatio(raw) {
+  if (VALID_ASPECT_RATIOS.includes(raw)) return raw;
+  return "1:1";
+}
+export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
+  if (req.method !== "POST") return res.status(405).json({ error: "Método não permitido." });
+  // Aceitar apiKey do body OU da variável de ambiente do Vercel
+  const apiKey = req.body?.apiKey || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) return res.status(401).json({ error: "Chave de API não configurada." });
+  // Aceitar tanto o schema antigo { base64ImageData, prompt, ... }
+  // quanto o schema novo { slide, ... }
+  const slide = req.body?.slide || {};
+  const prompt =
+    req.body?.prompt ||
+    slide?.imagePrompt ||
+    `${slide?.title || ""} ${slide?.subtitle || ""}`.trim();
+  const rawAspectRatio = req.body?.aspectRatio || req.body?.aspect_ratio || "1:1";
+  const aspectRatio = sanitizeAspectRatio(rawAspectRatio);
+  if (!prompt) return res.status(400).json({ error: "prompt ou slide é obrigatório." });
   try {
-    const { slide, apiKey, aspectRatio = "1:1" } = req.body;
-    if (!apiKey) return res.status(401).json({ error: "Chave de API não configurada." });
-    if (!slide) return res.status(400).json({ error: "slide é obrigatório." });
-
-    const result = await generateSlideImage(slide, apiKey);
-    return res.status(200).json({ imageB64: result.base64, dataUrl: result.dataUrl });
-  } catch (err) {
-    console.error("recreate-expert-image error:", err);
-    if (err.message?.includes("403") || err.message?.includes("401")) {
-      return res.status(403).json({ error: "Chave de API inválida." });
+    const enhancedPrompt = buildMagneticPrompt(prompt, slide);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGEN_MODEL}:predict?key=${apiKey}`;
+    const body = {
+      instances: [{ prompt: enhancedPrompt }],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio,
+        personGeneration: "allow_adult",
+        language: "pt",
+      },
+    };
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Imagen 4 error:", errText);
+      return res.status(500).json({ error: `Erro na API Imagen 4: ${errText}` });
     }
-    return res.status(500).json({ error: err.message || "Erro ao recriar imagem." });
+    const data = await response.json();
+    const prediction = data?.predictions?.[0];
+    if (!prediction?.bytesBase64Encoded) {
+      return res.status(500).json({ error: "Nenhuma imagem retornada pelo Imagen 4." });
+    }
+    return res.status(200).json({
+      imageB64: prediction.bytesBase64Encoded,
+      mimeType: prediction.mimeType || "image/png",
+    });
+  } catch (err) {
+    console.error("Erro interno:", err);
+    return res.status(500).json({ error: err.message });
   }
-};
+}
