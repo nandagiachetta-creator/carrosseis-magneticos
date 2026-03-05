@@ -834,5 +834,388 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 })();
 </script>
 
+
+<!-- ============================================================
+     PAINEL DE CONFIGURAÇÕES - Chave API Gemini
+     ============================================================ -->
+<style>
+  #cfg-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 90px;
+    z-index: 9999;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #1f2937;
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  #cfg-fab:hover { transform: scale(1.1); box-shadow: 0 6px 24px rgba(0,0,0,0.4); }
+
+  #cfg-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10001;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #cfg-backdrop.open { display: flex; animation: igFadeIn 0.2s ease-out; }
+
+  #cfg-panel {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    width: 100%;
+    max-width: 460px;
+    animation: igSlideUp 0.25s ease-out;
+    overflow: hidden;
+  }
+
+  .cfg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #F3F4F6;
+    background: #F9FAFB;
+  }
+  .cfg-header h2 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    color: #111827;
+    margin: 0;
+  }
+  .cfg-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6B7280;
+    font-size: 20px;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .cfg-close:hover { background: #E5E7EB; }
+
+  .cfg-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+
+  .cfg-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .cfg-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .cfg-status.ok   { background: #D1FAE5; color: #065F46; }
+  .cfg-status.none { background: #FEF3C7; color: #92400E; }
+
+  .cfg-input-wrap { position: relative; }
+  .cfg-input {
+    width: 100%;
+    border: 1.5px solid #E5E7EB;
+    border-radius: 10px;
+    padding: 10px 42px 10px 12px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: #111827;
+    background: #fff;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .cfg-input:focus { border-color: #D29007; box-shadow: 0 0 0 3px rgba(210,144,7,0.12); }
+
+  .cfg-eye {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9CA3AF;
+    font-size: 16px;
+    padding: 0;
+  }
+  .cfg-eye:hover { color: #6B7280; }
+
+  .cfg-hint { font-size: 12px; color: #9CA3AF; margin-top: 5px; }
+  .cfg-hint a { color: #D29007; text-decoration: none; }
+  .cfg-hint a:hover { text-decoration: underline; }
+
+  .cfg-actions { display: flex; gap: 8px; }
+  .cfg-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all 0.15s;
+  }
+  .cfg-btn.primary {
+    background: linear-gradient(135deg, #D29007, #b87a05);
+    color: white;
+  }
+  .cfg-btn.primary:hover { opacity: 0.9; }
+  .cfg-btn.danger {
+    background: #fff;
+    border-color: #FCA5A5;
+    color: #B91C1C;
+  }
+  .cfg-btn.danger:hover { background: #FEF2F2; }
+
+  .cfg-success {
+    background: #D1FAE5;
+    color: #065F46;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    display: none;
+    text-align: center;
+  }
+  .cfg-success.show { display: block; }
+
+  .cfg-error {
+    background: #FEF2F2;
+    color: #B91C1C;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: none;
+  }
+  .cfg-error.show { display: block; }
+
+  .cfg-divider {
+    border: none;
+    border-top: 1px solid #F3F4F6;
+    margin: 0;
+  }
+
+  .cfg-info-box {
+    background: #F9FAFB;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: #6B7280;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 540px) {
+    #cfg-panel { border-radius: 20px 20px 0 0; }
+    #cfg-backdrop { align-items: flex-end; padding: 0; }
+    #cfg-fab { right: 90px; }
+  }
+</style>
+
+<!-- Settings FAB -->
+<button id="cfg-fab" title="Configurações - Chave API" onclick="cfgOpen()">⚙️</button>
+
+<!-- Settings backdrop -->
+<div id="cfg-backdrop" onclick="cfgCloseBackdrop(event)">
+  <div id="cfg-panel">
+    <div class="cfg-header">
+      <h2>⚙️ Configurações</h2>
+      <button class="cfg-close" onclick="cfgClose()">✕</button>
+    </div>
+
+    <div class="cfg-body">
+
+      <!-- Status atual -->
+      <div>
+        <label class="cfg-label">Status da Chave API Gemini</label>
+        <div class="cfg-status none" id="cfg-status-box">
+          <span id="cfg-status-icon">⚠️</span>
+          <span id="cfg-status-text">Nenhuma chave configurada</span>
+        </div>
+      </div>
+
+      <hr class="cfg-divider">
+
+      <!-- Campo de chave -->
+      <div>
+        <label class="cfg-label" for="cfg-key-input">Nova chave API do Google Gemini</label>
+        <div class="cfg-input-wrap">
+          <input class="cfg-input" type="password" id="cfg-key-input" placeholder="Cole sua chave aqui: AIza...">
+          <button class="cfg-eye" onclick="cfgToggleEye()" title="Mostrar/ocultar">👁</button>
+        </div>
+        <p class="cfg-hint">
+          Obtenha sua chave em <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a> — é grátis.
+        </p>
+      </div>
+
+      <div class="cfg-success" id="cfg-success-box">✅ Chave salva! O app vai usar a nova chave agora.</div>
+      <div class="cfg-error"   id="cfg-error-box-s">⚠️ Cole uma chave válida antes de salvar.</div>
+
+      <div class="cfg-actions">
+        <button class="cfg-btn primary" onclick="cfgSaveKey()">💾 Salvar Chave</button>
+        <button class="cfg-btn danger"  onclick="cfgClearKey()">🗑️ Remover Chave</button>
+      </div>
+
+      <hr class="cfg-divider">
+
+      <div class="cfg-info-box">
+        💡 <strong>Como funciona:</strong> a chave fica salva na sessão do navegador (sessionStorage). Se fechar o navegador, precisará inserir novamente. Para salvar permanentemente no dispositivo use o localStorage (marque a opção abaixo).<br><br>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#374151;font-weight:500;">
+          <input type="checkbox" id="cfg-persist-check" onchange="cfgTogglePersist()" style="width:16px;height:16px;accent-color:#D29007;cursor:pointer;">
+          Lembrar chave mesmo após fechar o navegador
+        </label>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+
+  var CFG_SESSION_KEY = 'geminiApiKey';
+  var CFG_LOCAL_KEY   = 'geminiApiKey_persist';
+  var CFG_FLAG_KEY    = 'geminiApiKey_local';
+
+  function cfgGetCurrentKey() {
+    var fromSession = sessionStorage.getItem(CFG_SESSION_KEY);
+    var fromLocal   = localStorage.getItem(CFG_LOCAL_KEY);
+    return fromSession || fromLocal || null;
+  }
+
+  function cfgUpdateStatus() {
+    var key = cfgGetCurrentKey();
+    var box  = document.getElementById('cfg-status-box');
+    var icon = document.getElementById('cfg-status-icon');
+    var text = document.getElementById('cfg-status-text');
+    var persist = localStorage.getItem(CFG_FLAG_KEY) === '1';
+    if (key) {
+      box.className  = 'cfg-status ok';
+      icon.textContent = '✅';
+      var masked = key.substring(0, 8) + '••••••••••••' + key.slice(-4);
+      text.textContent = 'Chave ativa: ' + masked + (persist ? ' (salva permanentemente)' : ' (sessão)');
+    } else {
+      box.className  = 'cfg-status none';
+      icon.textContent = '⚠️';
+      text.textContent = 'Nenhuma chave configurada';
+    }
+    var checkbox = document.getElementById('cfg-persist-check');
+    if (checkbox) checkbox.checked = persist;
+  }
+
+  window.cfgOpen = function () {
+    cfgUpdateStatus();
+    document.getElementById('cfg-key-input').value = '';
+    document.getElementById('cfg-success-box').classList.remove('show');
+    document.getElementById('cfg-error-box-s').classList.remove('show');
+    document.getElementById('cfg-backdrop').classList.add('open');
+  };
+
+  window.cfgClose = function () {
+    document.getElementById('cfg-backdrop').classList.remove('open');
+  };
+
+  window.cfgCloseBackdrop = function (e) {
+    if (e.target === document.getElementById('cfg-backdrop')) cfgClose();
+  };
+
+  window.cfgToggleEye = function () {
+    var el = document.getElementById('cfg-key-input');
+    el.type = el.type === 'password' ? 'text' : 'password';
+  };
+
+  window.cfgSaveKey = function () {
+    var key = document.getElementById('cfg-key-input').value.trim();
+    document.getElementById('cfg-success-box').classList.remove('show');
+    document.getElementById('cfg-error-box-s').classList.remove('show');
+
+    if (!key) {
+      document.getElementById('cfg-error-box-s').classList.add('show');
+      return;
+    }
+
+    var persist = localStorage.getItem(CFG_FLAG_KEY) === '1';
+
+    // Save to sessionStorage (always)
+    sessionStorage.setItem(CFG_SESSION_KEY, key);
+
+    // If persist mode, also save to localStorage
+    if (persist) {
+      localStorage.setItem(CFG_LOCAL_KEY, key);
+    }
+
+    // Try to update the app's internal key function if accessible
+    // The app uses nu() to set the key internally
+    try {
+      // Dispatch a custom event so the app can pick up the new key
+      window.dispatchEvent(new CustomEvent('geminiKeyUpdated', { detail: { key: key } }));
+    } catch(e) {}
+
+    document.getElementById('cfg-key-input').value = '';
+    document.getElementById('cfg-success-box').classList.add('show');
+    cfgUpdateStatus();
+
+    // Reload page after short delay so the app picks up the new key from sessionStorage
+    setTimeout(function () {
+      window.location.reload();
+    }, 1500);
+  };
+
+  window.cfgClearKey = function () {
+    sessionStorage.removeItem(CFG_SESSION_KEY);
+    localStorage.removeItem(CFG_LOCAL_KEY);
+    localStorage.removeItem(CFG_FLAG_KEY);
+    cfgUpdateStatus();
+    document.getElementById('cfg-success-box').classList.remove('show');
+    document.getElementById('cfg-error-box-s').classList.remove('show');
+    setTimeout(function () { window.location.reload(); }, 800);
+  };
+
+  window.cfgTogglePersist = function () {
+    var checked = document.getElementById('cfg-persist-check').checked;
+    if (checked) {
+      localStorage.setItem(CFG_FLAG_KEY, '1');
+      // If there's already a key in session, also persist it
+      var key = sessionStorage.getItem(CFG_SESSION_KEY);
+      if (key) localStorage.setItem(CFG_LOCAL_KEY, key);
+    } else {
+      localStorage.removeItem(CFG_FLAG_KEY);
+      localStorage.removeItem(CFG_LOCAL_KEY);
+    }
+    cfgUpdateStatus();
+  };
+
+  // On load: restore persisted key into sessionStorage if present
+  (function () {
+    var persisted = localStorage.getItem(CFG_LOCAL_KEY);
+    if (persisted && !sessionStorage.getItem(CFG_SESSION_KEY)) {
+      sessionStorage.setItem(CFG_SESSION_KEY, persisted);
+    }
+  })();
+
+})();
+</script>
+
 </body>
 </html>
