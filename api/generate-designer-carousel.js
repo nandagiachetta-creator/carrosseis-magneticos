@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
     const { promptContext, backgroundPrompt, hasExpertImage, brandName, brandHandle, apiKey } = req.body;
     if (!apiKey) return res.status(401).json({ error: "Chave de API não configurada." });
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `Você é um designer especialista em carrosseis de Instagram no estilo Design Pro.
 Crie um carrossel de 5 a 7 slides para: ${promptContext}
 ${backgroundPrompt ? `Estilo visual: ${backgroundPrompt}` : ""}

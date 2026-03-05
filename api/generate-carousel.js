@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     if (!apiKey) return res.status(401).json({ error: "Chave de API não configurada." });
     if (!promptContext) return res.status(400).json({ error: "promptContext é obrigatório." });
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const systemPrompt = `Você é um especialista em marketing digital para Instagram.
 Crie um carrossel de 5 a 7 slides com base na estratégia fornecida.
 Identifique o nicho do negócio entre: saude, beleza, fitness, culinaria, moda, tech, educacao, advocacia, confeitaria, psico, imoveis, cosmeticos, espiritualidade, geral.

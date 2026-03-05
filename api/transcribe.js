@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     if (!apiKey) return res.status(401).json({ error: "Chave de API não configurada." });
     if (!audioData) return res.status(400).json({ error: "audioData é obrigatório." });
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent([
       { inlineData: { mimeType, data: audioData } },
       { text: "Transcreva o áudio a seguir para texto em português. Retorne APENAS o texto transcrito, sem comentários." },

@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     if (!apiKey) return res.status(401).json({ error: "Chave de API não configurada." });
     if (!promptContext) return res.status(400).json({ error: "promptContext é obrigatório." });
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent([
       `Com base na estratégia: "${promptContext}", crie 3 legendas diferentes para Instagram.
 Responda APENAS com JSON válido no formato:
